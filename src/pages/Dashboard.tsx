@@ -10,6 +10,9 @@ import { useFinanceData } from "@/hooks/useFinanceData";
 import TransactionForm from "@/components/TransactionForm";
 import AccountPayableForm from "@/components/AccountPayableForm";
 import AccountReceivableForm from "@/components/AccountReceivableForm";
+import CategoryForm from "@/components/CategoryForm";
+import ExportData from "@/components/ExportData";
+import RecurringTransactionForm from "@/components/RecurringTransactionForm";
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -32,7 +35,7 @@ import {
 } from "lucide-react";
 
 const Dashboard = () => {
-  const { user, userProfile, signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const { 
     transactions, 
     accountsPayable, 
@@ -58,7 +61,7 @@ const Dashboard = () => {
     );
   }
 
-  const isEmpresa = userProfile?.profile_type === "empresa";
+  const isEmpresa = user?.profile_type === "empresa";
 
   // Calculate expense distribution for pie chart
   const expenseDistribution = categories
@@ -95,7 +98,7 @@ const Dashboard = () => {
               </div>
               <div>
                 <h1 className="text-2xl font-bold">
-                  {isEmpresa ? userProfile?.company_name : userProfile?.full_name}
+                  {user?.name}
                 </h1>
                 <p className="text-muted-foreground">
                   {isEmpresa ? "Dashboard Empresarial" : "Dashboard Pessoal"}
@@ -116,8 +119,11 @@ const Dashboard = () => {
         {/* Quick Actions */}
         <div className="flex flex-wrap gap-3 mb-8">
           <TransactionForm categories={categories} />
-          <AccountPayableForm categories={categories} />
-          <AccountReceivableForm />
+          {isEmpresa && <AccountPayableForm categories={categories} />}
+          {isEmpresa && <AccountReceivableForm />}
+          <CategoryForm />
+          <RecurringTransactionForm categories={categories} />
+          <ExportData />
         </div>
 
         {/* Summary Cards */}
@@ -191,10 +197,10 @@ const Dashboard = () => {
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className={`grid w-full ${isEmpresa ? 'grid-cols-4' : 'grid-cols-2'}`}>
             <TabsTrigger value="overview">Visão Geral</TabsTrigger>
-            <TabsTrigger value="payable">Contas a Pagar</TabsTrigger>
-            <TabsTrigger value="receivable">Contas a Receber</TabsTrigger>
+            {isEmpresa && <TabsTrigger value="payable">Contas a Pagar</TabsTrigger>}
+            {isEmpresa && <TabsTrigger value="receivable">Contas a Receber</TabsTrigger>}
             <TabsTrigger value="reports">Relatórios</TabsTrigger>
           </TabsList>
 
@@ -289,17 +295,18 @@ const Dashboard = () => {
             </div>
           </TabsContent>
 
-          <TabsContent value="payable">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CreditCard className="h-5 w-5" />
-                  Contas a Pagar
-                </CardTitle>
-                <CardDescription>
-                  Gerencie suas contas a pagar e despesas
-                </CardDescription>
-              </CardHeader>
+          {isEmpresa && (
+            <TabsContent value="payable">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <CreditCard className="h-5 w-5" />
+                    Contas a Pagar
+                  </CardTitle>
+                  <CardDescription>
+                    Gerencie suas contas a pagar e despesas
+                  </CardDescription>
+                </CardHeader>
               <CardContent>
                 <Table>
                   <TableHeader>
@@ -354,19 +361,21 @@ const Dashboard = () => {
                 </Table>
               </CardContent>
             </Card>
-          </TabsContent>
+            </TabsContent>
+          )}
 
-          <TabsContent value="receivable">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Receipt className="h-5 w-5" />
-                  Contas a Receber
-                </CardTitle>
-                <CardDescription>
-                  Gerencie valores a receber de clientes
-                </CardDescription>
-              </CardHeader>
+          {isEmpresa && (
+            <TabsContent value="receivable">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Receipt className="h-5 w-5" />
+                    Contas a Receber
+                  </CardTitle>
+                  <CardDescription>
+                    Gerencie valores a receber de clientes
+                  </CardDescription>
+                </CardHeader>
               <CardContent>
                 <Table>
                   <TableHeader>
@@ -408,7 +417,8 @@ const Dashboard = () => {
                 </Table>
               </CardContent>
             </Card>
-          </TabsContent>
+            </TabsContent>
+          )}
 
           <TabsContent value="reports">
             <div className="grid gap-6">
