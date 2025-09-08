@@ -13,6 +13,8 @@ import AccountReceivableForm from "@/components/AccountReceivableForm";
 import CategoryForm from "@/components/CategoryForm";
 import ExportData from "@/components/ExportData";
 import RecurringTransactionForm from "@/components/RecurringTransactionForm";
+import AccountPaymentChart from "@/components/charts/AccountPaymentChart";
+import MonthlyFlowChart from "@/components/charts/MonthlyFlowChart";
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -205,7 +207,7 @@ const Dashboard = () => {
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
-            {/* Charts Section */}
+            {/* Charts Section - Row 1 */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Expense Distribution */}
               <Card className="shadow-card hover:shadow-elevated transition-shadow">
@@ -292,6 +294,18 @@ const Dashboard = () => {
                   </div>
                 </CardContent>
               </Card>
+            </div>
+
+            {/* Charts Section - Row 2 */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Monthly Flow Chart */}
+              <MonthlyFlowChart transactions={transactions} />
+
+              {/* Account Payment Analysis Chart */}
+              <AccountPaymentChart 
+                accountsPayable={accountsPayable} 
+                categories={categories}
+              />
             </div>
           </TabsContent>
 
