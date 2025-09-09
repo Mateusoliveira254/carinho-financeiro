@@ -200,20 +200,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // If we have a Supabase session, sign out from Supabase
       if (session) {
         await supabase.auth.signOut()
+        // Don't manually clear state here - let onAuthStateChange handle it
       } else {
         // Local logout for demo accounts
         await new Promise(resolve => setTimeout(resolve, 300))
+        setUser(null)
+        setSession(null)
+        localStorage.removeItem('currentUser')
       }
-      
-      setUser(null)
-      setSession(null)
-      localStorage.removeItem('currentUser')
       
       toast({
         title: "Logout realizado com sucesso!",
       })
     } catch (error) {
-      throw error
+      console.error('Logout error:', error)
+      toast({
+        title: "Erro ao fazer logout",
+        description: "Tente novamente",
+        variant: "destructive"
+      })
     } finally {
       setLoading(false)
     }
