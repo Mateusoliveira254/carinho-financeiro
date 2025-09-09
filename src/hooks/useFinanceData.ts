@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/hooks/use-toast'
+import { supabase } from '@/integrations/supabase/client'
 
 // Types for financial data (structured to be easily replaced with Supabase later)
 export interface Category {
@@ -49,55 +50,6 @@ export interface AccountReceivable {
   updated_at: string
 }
 
-// Mock data generator (will be replaced with Supabase later)
-const generateMockData = (userId: string, profileType: 'empresa' | 'pessoal') => {
-  const mockCategories: Category[] = profileType === 'empresa' 
-    ? [
-        { id: '1', user_id: userId, name: 'Impostos', type: 'saida', profile_type: 'empresa', created_at: new Date().toISOString() },
-        { id: '2', user_id: userId, name: 'Aluguel', type: 'saida', profile_type: 'empresa', created_at: new Date().toISOString() },
-        { id: '3', user_id: userId, name: 'Fornecedores', type: 'saida', profile_type: 'empresa', created_at: new Date().toISOString() },
-        { id: '4', user_id: userId, name: 'Energia', type: 'saida', profile_type: 'empresa', created_at: new Date().toISOString() },
-        { id: '5', user_id: userId, name: 'Vendas', type: 'entrada', profile_type: 'empresa', created_at: new Date().toISOString() },
-        { id: '6', user_id: userId, name: 'Clientes', type: 'entrada', profile_type: 'empresa', created_at: new Date().toISOString() },
-      ]
-    : [
-        { id: '7', user_id: userId, name: 'Alimentação', type: 'saida', profile_type: 'pessoal', created_at: new Date().toISOString() },
-        { id: '8', user_id: userId, name: 'Saúde', type: 'saida', profile_type: 'pessoal', created_at: new Date().toISOString() },
-        { id: '9', user_id: userId, name: 'Lazer', type: 'saida', profile_type: 'pessoal', created_at: new Date().toISOString() },
-        { id: '10', user_id: userId, name: 'Transporte', type: 'saida', profile_type: 'pessoal', created_at: new Date().toISOString() },
-        { id: '11', user_id: userId, name: 'Salário', type: 'entrada', profile_type: 'pessoal', created_at: new Date().toISOString() },
-      ]
-
-  // Generate some sample transactions for demo
-  const sampleTransactions: Transaction[] = profileType === 'empresa' ? [
-    { id: '1', user_id: userId, description: 'Venda de produtos', amount: 15000, type: 'entrada', category_id: '5', date: '2024-01-15', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-    { id: '2', user_id: userId, description: 'Pagamento de impostos', amount: 2500, type: 'saida', category_id: '1', date: '2024-01-10', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-    { id: '3', user_id: userId, description: 'Aluguel do escritório', amount: 3000, type: 'saida', category_id: '2', date: '2024-01-05', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-  ] : [
-    { id: '4', user_id: userId, description: 'Salário recebido', amount: 5000, type: 'entrada', category_id: '11', date: '2024-01-01', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-    { id: '5', user_id: userId, description: 'Compras no supermercado', amount: 400, type: 'saida', category_id: '7', date: '2024-01-12', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-    { id: '6', user_id: userId, description: 'Cinema', amount: 50, type: 'saida', category_id: '9', date: '2024-01-14', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-  ]
-
-  const sampleAccountsPayable: AccountPayable[] = profileType === 'empresa' ? [
-    { id: '1', user_id: userId, description: 'Impostos mensais', category_id: '1', due_date: '2024-02-10', amount: 2500, status: 'pendente', is_recurring: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-    { id: '2', user_id: userId, description: 'Aluguel', category_id: '2', due_date: '2024-02-05', amount: 3000, status: 'pendente', is_recurring: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-  ] : [
-    { id: '3', user_id: userId, description: 'Plano de saúde', category_id: '8', due_date: '2024-02-15', amount: 350, status: 'pendente', is_recurring: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-  ]
-
-  const sampleAccountsReceivable: AccountReceivable[] = profileType === 'empresa' ? [
-    { id: '1', user_id: userId, client_name: 'Cliente ABC', description: 'Serviços prestados', amount: 5000, due_date: '2024-02-20', status: 'pendente', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-    { id: '2', user_id: userId, client_name: 'Cliente XYZ', description: 'Venda de produtos', amount: 8000, due_date: '2024-02-25', status: 'pendente', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-  ] : []
-
-  return {
-    categories: mockCategories,
-    transactions: sampleTransactions,
-    accountsPayable: sampleAccountsPayable,
-    accountsReceivable: sampleAccountsReceivable
-  }
-}
 
 export const useFinanceData = () => {
   const { user } = useAuth()
@@ -119,29 +71,88 @@ export const useFinanceData = () => {
 
     setLoading(true)
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 500))
-      
-      // Get data from localStorage or generate mock data
-      const storageKey = `financeData_${user.id}`
-      const savedData = localStorage.getItem(storageKey)
-      
-      if (savedData) {
-        const parsedData = JSON.parse(savedData)
-        setTransactions(parsedData.transactions || [])
-        setAccountsPayable(parsedData.accountsPayable || [])
-        setAccountsReceivable(parsedData.accountsReceivable || [])
-        setCategories(parsedData.categories || [])
-      } else {
-        // Generate and save mock data for first time users
-        const mockData = generateMockData(user.id, user.profile_type)
-        setTransactions(mockData.transactions)
-        setAccountsPayable(mockData.accountsPayable)
-        setAccountsReceivable(mockData.accountsReceivable)
-        setCategories(mockData.categories)
-        
-        localStorage.setItem(storageKey, JSON.stringify(mockData))
-      }
+      // Fetch categories
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from('categories')
+        .select('*')
+        .eq('user_id', user.id)
+
+      if (categoriesError) throw categoriesError
+
+      // Fetch transactions
+      const { data: transactionsData, error: transactionsError } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('transaction_date', { ascending: false })
+
+      if (transactionsError) throw transactionsError
+
+      // Fetch accounts payable
+      const { data: payableData, error: payableError } = await supabase
+        .from('accounts_payable')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('due_date', { ascending: true })
+
+      if (payableError) throw payableError
+
+      // Fetch accounts receivable
+      const { data: receivableData, error: receivableError } = await supabase
+        .from('accounts_receivable')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('due_date', { ascending: true })
+
+      if (receivableError) throw receivableError
+
+      // Map data to match interface
+      setCategories(categoriesData?.map(cat => ({
+        id: cat.id.toString(),
+        user_id: cat.user_id,
+        name: cat.name,
+        type: cat.type as 'entrada' | 'saida',
+        profile_type: user.profile_type,
+        created_at: new Date().toISOString()
+      })) || [])
+
+      setTransactions(transactionsData?.map(trans => ({
+        id: trans.id.toString(),
+        user_id: trans.user_id,
+        description: trans.description || '',
+        amount: Number(trans.amount),
+        type: trans.type as 'entrada' | 'saida',
+        category_id: trans.category_id?.toString() || '',
+        date: trans.transaction_date,
+        created_at: trans.created_at || new Date().toISOString(),
+        updated_at: trans.created_at || new Date().toISOString()
+      })) || [])
+
+      setAccountsPayable(payableData?.map(payable => ({
+        id: payable.id.toString(),
+        user_id: payable.user_id,
+        description: payable.description || '',
+        category_id: payable.category_id?.toString() || '',
+        due_date: payable.due_date,
+        amount: Number(payable.amount),
+        status: payable.status as 'pendente' | 'pago' | 'vencido',
+        is_recurring: payable.is_recurring || false,
+        created_at: payable.created_at || new Date().toISOString(),
+        updated_at: payable.created_at || new Date().toISOString()
+      })) || [])
+
+      setAccountsReceivable(receivableData?.map(receivable => ({
+        id: receivable.id.toString(),
+        user_id: receivable.user_id,
+        client_name: receivable.client_name || '',
+        description: receivable.description || '',
+        amount: Number(receivable.amount),
+        due_date: receivable.due_date,
+        status: receivable.status as 'pendente' | 'recebido',
+        created_at: receivable.created_at || new Date().toISOString(),
+        updated_at: receivable.created_at || new Date().toISOString()
+      })) || [])
+
     } catch (error) {
       console.error('Error fetching data:', error)
       toast({
@@ -154,159 +165,250 @@ export const useFinanceData = () => {
     }
   }
 
-  // Helper function to save data to localStorage
-  const saveToStorage = (data: any) => {
-    if (!user) return
-    const storageKey = `financeData_${user.id}`
-    localStorage.setItem(storageKey, JSON.stringify(data))
-  }
-
   const addTransaction = async (transaction: Omit<Transaction, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
     if (!user) return
 
-    const newTransaction: Transaction = {
-      ...transaction,
-      id: Date.now().toString(),
-      user_id: user.id,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+    try {
+      const { data, error } = await supabase
+        .from('transactions')
+        .insert({
+          user_id: user.id,
+          description: transaction.description,
+          amount: transaction.amount,
+          type: transaction.type,
+          category_id: transaction.category_id ? parseInt(transaction.category_id) : null,
+          transaction_date: transaction.date
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      const newTransaction: Transaction = {
+        id: data.id.toString(),
+        user_id: data.user_id,
+        description: data.description || '',
+        amount: Number(data.amount),
+        type: data.type as 'entrada' | 'saida',
+        category_id: data.category_id?.toString() || '',
+        date: data.transaction_date,
+        created_at: data.created_at || new Date().toISOString(),
+        updated_at: data.created_at || new Date().toISOString()
+      }
+
+      setTransactions(prev => [newTransaction, ...prev])
+
+      toast({
+        title: "Transação adicionada com sucesso!",
+      })
+      return newTransaction
+    } catch (error) {
+      console.error('Error adding transaction:', error)
+      toast({
+        title: "Erro ao adicionar transação",
+        description: "Ocorreu um erro ao salvar a transação",
+        variant: "destructive"
+      })
     }
-
-    const updatedTransactions = [newTransaction, ...transactions]
-    setTransactions(updatedTransactions)
-    
-    saveToStorage({
-      transactions: updatedTransactions,
-      accountsPayable,
-      accountsReceivable,
-      categories
-    })
-
-    toast({
-      title: "Transação adicionada com sucesso!",
-    })
-    return newTransaction
   }
 
   const addAccountPayable = async (account: Omit<AccountPayable, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
     if (!user) return
 
-    const newAccount: AccountPayable = {
-      ...account,
-      id: Date.now().toString(),
-      user_id: user.id,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+    try {
+      const { data, error } = await supabase
+        .from('accounts_payable')
+        .insert({
+          user_id: user.id,
+          description: account.description,
+          category_id: account.category_id ? parseInt(account.category_id) : null,
+          due_date: account.due_date,
+          amount: account.amount,
+          status: account.status,
+          is_recurring: account.is_recurring
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      const newAccount: AccountPayable = {
+        id: data.id.toString(),
+        user_id: data.user_id,
+        description: data.description || '',
+        category_id: data.category_id?.toString() || '',
+        due_date: data.due_date,
+        amount: Number(data.amount),
+        status: data.status as 'pendente' | 'pago' | 'vencido',
+        is_recurring: data.is_recurring || false,
+        created_at: data.created_at || new Date().toISOString(),
+        updated_at: data.created_at || new Date().toISOString()
+      }
+
+      setAccountsPayable(prev => [...prev, newAccount])
+
+      toast({
+        title: "Conta a pagar adicionada com sucesso!",
+      })
+      return newAccount
+    } catch (error) {
+      console.error('Error adding account payable:', error)
+      toast({
+        title: "Erro ao adicionar conta a pagar",
+        description: "Ocorreu um erro ao salvar a conta",
+        variant: "destructive"
+      })
     }
-
-    const updatedAccountsPayable = [...accountsPayable, newAccount]
-    setAccountsPayable(updatedAccountsPayable)
-    
-    saveToStorage({
-      transactions,
-      accountsPayable: updatedAccountsPayable,
-      accountsReceivable,
-      categories
-    })
-
-    toast({
-      title: "Conta a pagar adicionada com sucesso!",
-    })
-    return newAccount
   }
 
   const addAccountReceivable = async (account: Omit<AccountReceivable, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
     if (!user) return
 
-    const newAccount: AccountReceivable = {
-      ...account,
-      id: Date.now().toString(),
-      user_id: user.id,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+    try {
+      const { data, error } = await supabase
+        .from('accounts_receivable')
+        .insert({
+          user_id: user.id,
+          client_name: account.client_name,
+          description: account.description,
+          amount: account.amount,
+          due_date: account.due_date,
+          status: account.status
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      const newAccount: AccountReceivable = {
+        id: data.id.toString(),
+        user_id: data.user_id,
+        client_name: data.client_name || '',
+        description: data.description || '',
+        amount: Number(data.amount),
+        due_date: data.due_date,
+        status: data.status as 'pendente' | 'recebido',
+        created_at: data.created_at || new Date().toISOString(),
+        updated_at: data.created_at || new Date().toISOString()
+      }
+
+      setAccountsReceivable(prev => [...prev, newAccount])
+
+      toast({
+        title: "Conta a receber adicionada com sucesso!",
+      })
+      return newAccount
+    } catch (error) {
+      console.error('Error adding account receivable:', error)
+      toast({
+        title: "Erro ao adicionar conta a receber",
+        description: "Ocorreu um erro ao salvar a conta",
+        variant: "destructive"
+      })
     }
-
-    const updatedAccountsReceivable = [...accountsReceivable, newAccount]
-    setAccountsReceivable(updatedAccountsReceivable)
-    
-    saveToStorage({
-      transactions,
-      accountsPayable,
-      accountsReceivable: updatedAccountsReceivable,
-      categories
-    })
-
-    toast({
-      title: "Conta a receber adicionada com sucesso!",
-    })
-    return newAccount
   }
 
   const updateAccountPayableStatus = async (id: string, status: AccountPayable['status']) => {
-    const updatedAccountsPayable = accountsPayable.map(account => 
-      account.id === id ? { ...account, status, updated_at: new Date().toISOString() } : account
-    )
-    
-    setAccountsPayable(updatedAccountsPayable)
-    
-    saveToStorage({
-      transactions,
-      accountsPayable: updatedAccountsPayable,
-      accountsReceivable,
-      categories
-    })
+    try {
+      const { error } = await supabase
+        .from('accounts_payable')
+        .update({ status })
+        .eq('id', parseInt(id))
+        .eq('user_id', user?.id)
 
-    toast({
-      title: "Status atualizado com sucesso!",
-    })
+      if (error) throw error
+
+      setAccountsPayable(prev => 
+        prev.map(account => 
+          account.id === id 
+            ? { ...account, status, updated_at: new Date().toISOString() } 
+            : account
+        )
+      )
+
+      toast({
+        title: "Status atualizado com sucesso!",
+      })
+    } catch (error) {
+      console.error('Error updating account payable status:', error)
+      toast({
+        title: "Erro ao atualizar status",
+        description: "Ocorreu um erro ao atualizar o status",
+        variant: "destructive"
+      })
+    }
   }
 
   const updateAccountReceivableStatus = async (id: string, status: AccountReceivable['status']) => {
-    const updatedAccountsReceivable = accountsReceivable.map(account => 
-      account.id === id ? { ...account, status, updated_at: new Date().toISOString() } : account
-    )
-    
-    setAccountsReceivable(updatedAccountsReceivable)
-    
-    saveToStorage({
-      transactions,
-      accountsPayable,
-      accountsReceivable: updatedAccountsReceivable,
-      categories
-    })
+    try {
+      const { error } = await supabase
+        .from('accounts_receivable')
+        .update({ status })
+        .eq('id', parseInt(id))
+        .eq('user_id', user?.id)
 
-    toast({
-      title: "Status atualizado com sucesso!",
-    })
+      if (error) throw error
+
+      setAccountsReceivable(prev => 
+        prev.map(account => 
+          account.id === id 
+            ? { ...account, status, updated_at: new Date().toISOString() } 
+            : account
+        )
+      )
+
+      toast({
+        title: "Status atualizado com sucesso!",
+      })
+    } catch (error) {
+      console.error('Error updating account receivable status:', error)
+      toast({
+        title: "Erro ao atualizar status",
+        description: "Ocorreu um erro ao atualizar o status",
+        variant: "destructive"
+      })
+    }
   }
 
-  // Add a new category
   const addCategory = async (name: string, type: 'entrada' | 'saida') => {
     if (!user) return
 
-    const newCategory: Category = {
-      id: Date.now().toString(),
-      user_id: user.id,
-      name,
-      type,
-      profile_type: user.profile_type,
-      created_at: new Date().toISOString(),
+    try {
+      const { data, error } = await supabase
+        .from('categories')
+        .insert({
+          user_id: user.id,
+          name,
+          type
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      const newCategory: Category = {
+        id: data.id.toString(),
+        user_id: data.user_id,
+        name: data.name,
+        type: data.type as 'entrada' | 'saida',
+        profile_type: user.profile_type,
+        created_at: new Date().toISOString()
+      }
+
+      setCategories(prev => [...prev, newCategory])
+
+      toast({
+        title: "Categoria adicionada com sucesso!",
+      })
+      return newCategory
+    } catch (error) {
+      console.error('Error adding category:', error)
+      toast({
+        title: "Erro ao adicionar categoria",
+        description: "Ocorreu um erro ao salvar a categoria",
+        variant: "destructive"
+      })
     }
-
-    const updatedCategories = [...categories, newCategory]
-    setCategories(updatedCategories)
-    
-    saveToStorage({
-      transactions,
-      accountsPayable,
-      accountsReceivable,
-      categories: updatedCategories
-    })
-
-    toast({
-      title: "Categoria adicionada com sucesso!",
-    })
-    return newCategory
   }
 
   // Calculate financial summaries
