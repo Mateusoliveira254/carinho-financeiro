@@ -45,11 +45,11 @@ const Auth = () => {
           <CardContent>
             <form onSubmit={handleSignIn} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="username">Usuário</Label>
+                <Label htmlFor="username">Usuário ou e-mail</Label>
                 <Input
                   id="username"
                   type="text"
-                  placeholder="Digite seu usuário"
+                  placeholder="Digite seu usuário ou e-mail"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   required

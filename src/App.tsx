@@ -30,11 +30,11 @@ const AppRoutes = () => {
         <>
           <Route path="/" element={<Dashboard />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="*" element={<NotFound />} />
         </>
       ) : (
         <Route path="*" element={<Auth />} />
       )}
-      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 };
