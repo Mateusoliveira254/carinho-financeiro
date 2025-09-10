@@ -60,15 +60,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         setSession(session)
         
         if (session?.user) {
           // Map Supabase user to our User interface
-          await handleSupabaseUser(session.user)
+          handleSupabaseUser(session.user).finally(() => {
+            setLoading(false)
+          })
         } else {
           setUser(null)
           localStorage.removeItem('currentUser')
+          setLoading(false)
         }
       }
     )
@@ -77,7 +80,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
       if (session?.user) {
-        handleSupabaseUser(session.user)
+        handleSupabaseUser(session.user).finally(() => {
+          setLoading(false)
+        })
       } else {
         // Check if user is already logged in (localStorage - for demo accounts)
         const savedUser = localStorage.getItem('currentUser')
@@ -88,8 +93,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             localStorage.removeItem('currentUser')
           }
         }
+        setLoading(false)
       }
-      setLoading(false)
     })
 
     return () => subscription.unsubscribe()
